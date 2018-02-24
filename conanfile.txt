@@ -1,0 +1,8 @@
+[requires]
+sqlite3/3.21.0@bincrafters/stable
+
+[options]
+sqlite3:shared=False
+
+[generators]
+cmake
