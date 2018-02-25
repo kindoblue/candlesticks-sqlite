@@ -3,6 +3,16 @@
 #include <sqlite3.h>
 
 
+static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+    int i;
+    for(i = 0; i<argc; i++) {
+        std::cout << argv[i] << "\t";
+        //printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+    std::cout << "\n";
+    return 0;
+}
+
 int main() {
 
     sqlite3  *db = nullptr;
@@ -39,8 +49,8 @@ int main() {
     // query to get 5 min interval ohlc values
     auto selectSQL = "SELECT\n"
             "  candlestick_open(t.trade_price, t.timestamp),\n"
-            "  Min(t.trade_price),\n"
             "  Max(t.trade_price),\n"
+            "  Min(t.trade_price),\n"
             "  candlestick_close(t.trade_price, t.timestamp),\n"
             "  sum(t.trade_volume),\n"
             "  SUBSTR(t.date_time, 1, 11) || ':' ||\n"
@@ -50,7 +60,7 @@ int main() {
             "GROUP BY rounded_dt";
 
     // execute the query
-    rc = sqlite3_exec(db, selectSQL, nullptr, nullptr, &errMsg);
+    rc = sqlite3_exec(db, selectSQL, callback, nullptr, &errMsg);
     if( rc != SQLITE_OK ) {
         std::cerr << errMsg;
         sqlite3_free(errMsg);
@@ -60,8 +70,6 @@ int main() {
     // close and shutdown the db
     sqlite3_close( db );
     sqlite3_shutdown( );
-
-    std::cout << "Hello, World!" << std::endl;
 
     return 0;
 }
