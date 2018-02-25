@@ -11,12 +11,14 @@ int main() {
 
     sqlite3_initialize( );
 
-    rc = sqlite3_open_v2( "", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr );
+    // open the database
+    rc = sqlite3_open_v2( "/Users/ice/Development/candlestick_sqlite/data/ticks.db", &db, SQLITE_OPEN_READONLY, nullptr );
     if ( rc != SQLITE_OK) {
         sqlite3_close( db );
         exit( -1 );
     }
 
+    // enable extensions
     rc = sqlite3_enable_load_extension(db, 1);
     if( rc != SQLITE_OK ) {
         std::cerr << errMsg;
@@ -24,6 +26,7 @@ int main() {
         exit( -1 );
     }
 
+    // load our extension
     rc = sqlite3_load_extension(db, "../lib/libcandlestick",
                                 "sqlite3_candlestick_init", &errMsg);
     if( rc != SQLITE_OK ) {
@@ -32,49 +35,21 @@ int main() {
         exit( -1 );
     }
 
-    auto sql = "PRAGMA journal_mode=OFF";
-    rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
-    if( rc != SQLITE_OK ) {
-        std::cerr << errMsg;
-        sqlite3_free(errMsg);
-        exit( -1 );
-    }
 
-    auto createSQL ="CREATE TABLE Person(Class INT, Value REAL, Weight REAL);";
-    rc = sqlite3_exec(db, createSQL, nullptr, nullptr, &errMsg);
-    if( rc != SQLITE_OK ) {
-        std::cerr << errMsg;
-        sqlite3_free(errMsg);
-        exit( -1 );
-    }
+    // query to get 5 min interval ohlc values
+    auto selectSQL = "SELECT\n"
+            "  candlestick_open(t.trade_price, t.timestamp),\n"
+            "  Min(t.trade_price),\n"
+            "  Max(t.trade_price),\n"
+            "  candlestick_close(t.trade_price, t.timestamp),\n"
+            "  sum(t.trade_volume),\n"
+            "  SUBSTR(t.date_time, 1, 11) || ':' ||\n"
+            "  SUBSTR(((SUBSTR(t.date_time, 13, 2) / 5) * 5) || '00', 1, 2)\n"
+            "  || ':' || '00' AS rounded_dt\n"
+            "FROM ticks t\n"
+            "GROUP BY rounded_dt";
 
-    auto insertSQL1 = "INSERT INTO Person VALUES(1, 3.4, 1.0);";
-    rc = sqlite3_exec(db, insertSQL1, nullptr, nullptr, &errMsg);
-    if( rc != SQLITE_OK ) {
-        std::cerr << errMsg;
-        sqlite3_free(errMsg);
-        exit( -1 );
-    }
-
-    auto insertSQL2 = "INSERT INTO Person VALUES(1, 6.4, 2.3);";
-    rc = sqlite3_exec(db, insertSQL2, nullptr, nullptr, &errMsg);
-    if( rc != SQLITE_OK ) {
-        std::cerr << errMsg;
-        sqlite3_free(errMsg);
-        exit( -1 );
-    }
-
-    auto insertSQL3 = "INSERT INTO Person VALUES(3, 5.4, 1.3);";
-    rc = sqlite3_exec(db, insertSQL3, nullptr, nullptr, &errMsg);
-    if( rc != SQLITE_OK ) {
-        std::cerr << errMsg;
-        sqlite3_free(errMsg);
-        exit( -1 );
-    }
-
-
-    auto selectSQL = "SELECT Class, candlestick_open( Value ), candlestick_close( Value ) FROM Person GROUP BY Class;";
-    //auto selectSQL = "SELECT class, value FROM Person GROUP BY Class;";
+    // execute the query
     rc = sqlite3_exec(db, selectSQL, nullptr, nullptr, &errMsg);
     if( rc != SQLITE_OK ) {
         std::cerr << errMsg;
