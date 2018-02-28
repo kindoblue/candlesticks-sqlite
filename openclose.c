@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <memory.h>
 
 SQLITE_EXTENSION_INIT1
 
@@ -40,7 +41,8 @@ void min_max_step(sqlite3_context *ctx, int num_values, sqlite3_value **values)
         st->max_timestamp = LONG_MIN;
      }
 
-    /* Extract weight, if we have a weight and it looks like a number */
+    // get the timestamp parameter and check if it is the first or last in time
+    // so far
     if ( num_values == 2 ) {
         type = sqlite3_value_numeric_type( values[1] );
         if (type == SQLITE_INTEGER ) {
@@ -57,10 +59,9 @@ void min_max_step(sqlite3_context *ctx, int num_values, sqlite3_value **values)
             }
 
         } else {
-            // TODO error
+            const char * msg = "the second parameter should be an integer timestamp";
+            sqlite3_result_error(ctx, msg, strlen(msg) );
         }
-    } else {
-        // TODO error
     }
 
     // save the price value in case this record is
@@ -69,7 +70,7 @@ void min_max_step(sqlite3_context *ctx, int num_values, sqlite3_value **values)
 
         type = sqlite3_value_numeric_type(values[0]);
 
-        if (type == SQLITE_FLOAT) {
+        if (type == SQLITE_FLOAT || type == SQLITE_INTEGER) {
             double price = sqlite3_value_double(values[0]);
             if (is_first) {
                 st->open_value = price;
@@ -77,7 +78,8 @@ void min_max_step(sqlite3_context *ctx, int num_values, sqlite3_value **values)
                 st->close_value = price;
             }
         } else {
-            // TODO error
+            const char * msg = "the first parameter should be the price, integer or float";
+            sqlite3_result_error(ctx, msg, strlen(msg) );
         }
     }
 }
