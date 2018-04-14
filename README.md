@@ -102,39 +102,16 @@ The example program load the extension and then run a query like this one:
 
 ```
 SELECT
-   candlestick_open(t.trade_price, t.timestamp),
-   Max(t.trade_price),
-   Min(t.trade_price),
-   candlestick_close(t.trade_price, t.timestamp),
-   sum(t.trade_volume),
-   SUBSTR(t.date_time, 1, 13) || ':' ||
-   SUBSTR(((SUBSTR(t.date_time, 15, 2) / 5) * 5) || '00', 1, 2) || ':' || '00' AS rounded_dt,
-   t.timestamp
+   candlestick_open(t.trade_price, t.timestamp) as open,
+   Max(t.trade_price) as high,
+   Min(t.trade_price) as low,
+   candlestick_close(t.trade_price, t.timestamp) as close,
+   sum(t.trade_volume) as volume,
+   strftime('%s', printf("%s:%.2d:00", SUBSTR(t.date_time, 1, 13), ((SUBSTR(t.date_time, 15, 2) / 5) * 5))) AS rounded_timestamp
 FROM ticks t
-GROUP BY rounded_dt;
+WHERE t.timestamp BETWEEN 1508575930 AND 1508898453
+GROUP BY rounded_timestamp;
 ```
 
 Here for simplicity I have a varchar column with the date already converted from the integer timestamp value, so the query is a bit simpler. 
 
-If you create a view like this
-
-```
-CREATE VIEW ticks_5min AS
-SELECT
-   candlestick_open(t.trade_price, t.timestamp),
-   Max(t.trade_price),
-   Min(t.trade_price),
-   candlestick_close(t.trade_price, t.timestamp),
-   sum(t.trade_volume),
-   SUBSTR(t.date_time, 1, 13) || ':' ||
-   SUBSTR(((SUBSTR(t.date_time, 15, 2) / 5) * 5) || '00', 1, 2) || ':' || '00' AS rounded_dt,
-   t.timestamp
-FROM ticks t
-GROUP BY rounded_dt;
-```
-
-Then you can get your aggregate in a limited time span like for example
-
-```
-SELECT t.* FROM ticks_5min t WHERE timestamp BETWEEN 1508743220 AND 1508766463;
-```
